@@ -8,6 +8,8 @@ github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b h1:mimo19zliBX/vS
 github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b/go.mod h1:fvzegU4vN3H1qMT+8wDmzjAcDONcgo2/SZ/TyfdUOFs=
 github.com/chains-lab/city-petitions-proto v0.2.1 h1:UOhSX73i1XP8bmP+vqzgj7t8Sv42c2uTneO3IdmRBD0=
 github.com/chains-lab/city-petitions-proto v0.2.1/go.mod h1:Fo+XuQO/otKL9buAlOPJpVhg/+HDQVkNvR4SKlowteA=
+github.com/chains-lab/city-petitions-proto v0.2.2 h1:kaw+09zrvXDP25JIz5cdU58OWHvqtvMkVOlrQSUKNVI=
+github.com/chains-lab/city-petitions-proto v0.2.2/go.mod h1:Fo+XuQO/otKL9buAlOPJpVhg/+HDQVkNvR4SKlowteA=
 github.com/chains-lab/gatekit v0.2.0 h1:h0VmrUqOrR/P1ioRhUq/Co794ig9zMVNGtLCvUXPN9s=
 github.com/chains-lab/gatekit v0.2.0/go.mod h1:4Bm8BXPMR+HTnMg7uEPGA4nCLMA8xD+fYifuKkn766Q=
 github.com/chains-lab/svc-errors v0.2.2 h1:70aJpuCHhptxOXQTIntfSwG8xi0WmthSPUpj3o2F0ds=

@@ -5,7 +5,7 @@ go 1.24.5
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/alecthomas/kingpin v2.2.6+incompatible
-	github.com/chains-lab/city-petitions-proto v0.2.1
+	github.com/chains-lab/city-petitions-proto v0.2.2
 	github.com/chains-lab/gatekit v0.2.0
 	github.com/chains-lab/svc-errors v0.2.2
 	github.com/google/uuid v1.6.0

@@ -65,6 +65,13 @@ type Petition struct {
 	sigQ signaturesQ
 }
 
+func NewPetition(pg *sql.DB) Petition {
+	return Petition{
+		q:    dbx.NewPetitionsQ(pg),
+		sigQ: dbx.NewPetitionSignaturesQ(pg),
+	}
+}
+
 type CreatePetitionInput struct {
 	Title       string
 	Description string
@@ -386,7 +393,7 @@ type ListPetitionsSignSort struct {
 func (p Petition) ListSignatures(
 	ctx context.Context,
 	filter ListPetitionsSignFilter,
-	sort ListPetitionsSort,
+	sort ListPetitionsSignSort,
 	pag pagination.Request,
 ) ([]models.PetitionSignature, pagination.Response, error) {
 	query := p.sigQ.New()

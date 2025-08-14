@@ -20,17 +20,17 @@ func RequestID() grpc.UnaryServerInterceptor {
 	) (interface{}, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
-			return nil, problems.UnauthenticatedError(ctx, fmt.Sprintf("no metadata found in incoming context")).Err()
+			return nil, problems.UnauthenticatedError(ctx, fmt.Sprintf("no metadata found in incoming context"))
 		}
 
 		requestIDArr := md["x-request-id"]
 		if len(requestIDArr) == 0 {
-			return nil, problems.UnauthenticatedError(ctx, fmt.Sprintf("request ID not supplied")).Err()
+			return nil, problems.UnauthenticatedError(ctx, fmt.Sprintf("request ID not supplied"))
 		}
 
 		requestID, err := uuid.Parse(requestIDArr[0])
 		if err != nil {
-			return nil, problems.UnauthenticatedError(ctx, fmt.Sprintf("invalid request ID: %v", err)).Err()
+			return nil, problems.UnauthenticatedError(ctx, fmt.Sprintf("invalid request ID: %v", err))
 		}
 
 		ctx = context.WithValue(ctx, meta.RequestIDCtxKey, requestID)
