@@ -20,9 +20,9 @@ type GeoPoint struct {
 type Petition struct {
 	ID          uuid.UUID `db:"id"`
 	CityID      uuid.UUID `db:"city_id"`
+	CreatorID   uuid.UUID `db:"creator_id"`
 	Title       string    `db:"title"`
 	Description string    `db:"description"`
-	CreatorID   uuid.UUID `db:"creator_id"`
 	Status      string    `db:"status"`
 	Signatures  int       `db:"signatures"`
 	Goal        int       `db:"goal"`
@@ -48,9 +48,9 @@ func NewPetitionsQ(db *sql.DB) PetitionsQ {
 	selectCols := []string{
 		"id",
 		"city_id",
+		"creator_id",
 		"title",
 		"description",
-		"creator_id",
 		"status",
 		"signatures",
 		"goal",
@@ -78,9 +78,9 @@ func (q PetitionsQ) Insert(ctx context.Context, input Petition) error {
 	values := map[string]interface{}{
 		"id":          input.ID,
 		"city_id":     input.CityID,
+		"creator_id":  input.CreatorID,
 		"title":       input.Title,
 		"description": input.Description,
-		"creator_id":  input.CreatorID,
 		"status":      input.Status,
 		"signatures":  input.Signatures,
 		"goal":        input.Goal,
@@ -121,9 +121,9 @@ func (q PetitionsQ) Get(ctx context.Context) (Petition, error) {
 	err = row.Scan(
 		&p.ID,
 		&p.CityID,
+		&p.CreatorID,
 		&p.Title,
 		&p.Description,
-		&p.CreatorID,
 		&p.Status,
 		&p.Signatures,
 		&p.Goal,
@@ -159,9 +159,9 @@ func (q PetitionsQ) Select(ctx context.Context) ([]Petition, error) {
 		if err := rows.Scan(
 			&p.ID,
 			&p.CityID,
+			&p.CreatorID,
 			&p.Title,
 			&p.Description,
-			&p.CreatorID,
 			&p.Status,
 			&p.Signatures,
 			&p.Goal,
@@ -266,10 +266,70 @@ func (q PetitionsQ) FilterStatus(status string) PetitionsQ {
 	return q
 }
 
+func (q PetitionsQ) FilterStatusIn(statuses ...string) PetitionsQ {
+	if len(statuses) == 0 {
+		return q
+	}
+
+	q.selector = q.selector.Where(sq.Eq{"status": statuses})
+	q.counter = q.counter.Where(sq.Eq{"status": statuses})
+	q.updater = q.updater.Where(sq.Eq{"status": statuses})
+	q.deleter = q.deleter.Where(sq.Eq{"status": statuses})
+
+	return q
+}
+
 func (q PetitionsQ) TitleLike(s string) PetitionsQ {
 	p := fmt.Sprintf("%%%s%%", s)
 	q.selector = q.selector.Where("title ILIKE ?", p)
 	q.counter = q.counter.Where("title ILIKE ?", p)
+
+	return q
+}
+
+func (q PetitionsQ) FilterCreatedAt(t time.Time, after bool) PetitionsQ {
+	query := "created_at > ?"
+	if !after {
+		query = "created_at < ?"
+	}
+
+	q.selector = q.selector.Where(query, t)
+	q.counter = q.counter.Where(query, t)
+	q.updater = q.updater.Where(query, t)
+	q.deleter = q.deleter.Where(query, t)
+
+	return q
+}
+
+func (q PetitionsQ) FilterEndDate(t time.Time, after bool) PetitionsQ {
+	query := "end_date > ?"
+	if !after {
+		query = "end_date < ?"
+	}
+	q.selector = q.selector.Where(query, t)
+	q.counter = q.counter.Where(query, t)
+	q.updater = q.updater.Where(query, t)
+	q.deleter = q.deleter.Where(query, t)
+
+	return q
+}
+
+func (q PetitionsQ) OrderByCreated(ascending bool) PetitionsQ {
+	if ascending {
+		q.selector = q.selector.OrderBy("created_at ASC")
+	} else {
+		q.selector = q.selector.OrderBy("created_at DESC")
+	}
+
+	return q
+}
+
+func (q PetitionsQ) OrderBySignatures(ascending bool) PetitionsQ {
+	if ascending {
+		q.selector = q.selector.OrderBy("signatures ASC")
+	} else {
+		q.selector = q.selector.OrderBy("signatures DESC")
+	}
 
 	return q
 }
@@ -294,5 +354,13 @@ func (q PetitionsQ) Page(limit, offset uint64) PetitionsQ {
 	q.selector = q.selector.Limit(limit).Offset(offset)
 	q.counter = q.counter.Limit(limit).Offset(offset)
 
+	return q
+}
+
+func (q PetitionsQ) applyCondition(cond sq.Sqlizer) PetitionsQ {
+	q.selector = q.selector.Where(cond)
+	q.updater = q.updater.Where(cond)
+	q.deleter = q.deleter.Where(cond)
+	q.counter = q.counter.Where(cond)
 	return q
 }

@@ -4,7 +4,6 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 CREATE TYPE petition_status AS ENUM (
     'published',  -- active and open for signatures
-    'withdrawn',  -- withdrawn by the initiator
     'approved',   -- approved by addressed user
     'rejected'    -- rejected by addressed user
 );
@@ -12,9 +11,9 @@ CREATE TYPE petition_status AS ENUM (
 CREATE TABLE "petitions" (
     "id"            UUID            PRIMARY KEY NOT NULL,
     "city_id"       UUID            NOT NULL,
+    "creator_id"    UUID            NOT NULL,
     "title"         VARCHAR(255)    NOT NULL,
     "description"   VARCHAR(8192)   NOT NULL,
-    "creator_id"    UUID            NOT NULL,
     "status"        petition_status NOT NULL,
     "signatures"    INT             NOT NULL DEFAULT 0 CHECK (signatures >= 0),
     "goal"          INT             NOT NULL DEFAULT 0 CHECK (goal >= 0),

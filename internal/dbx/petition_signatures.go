@@ -168,6 +168,16 @@ func (q PetitionSignaturesQ) FilterUserID(userID uuid.UUID) PetitionSignaturesQ 
 	return q
 }
 
+func (q PetitionSignaturesQ) OrderByCreated(ascending bool) PetitionSignaturesQ {
+	if ascending {
+		q.selector = q.selector.OrderBy("created_at ASC")
+	} else {
+		q.selector = q.selector.OrderBy("created_at DESC")
+	}
+
+	return q
+}
+
 func (q PetitionSignaturesQ) Count(ctx context.Context) (uint64, error) {
 	query, args, err := q.counter.ToSql()
 	if err != nil {
