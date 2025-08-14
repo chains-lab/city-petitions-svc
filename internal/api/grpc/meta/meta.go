@@ -11,6 +11,7 @@ type ctxKey int
 const (
 	LogCtxKey ctxKey = iota
 	RequestIDCtxKey
+	UserCtxKey
 )
 
 func RequestID(ctx context.Context) string {

@@ -2,11 +2,14 @@ package entities
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/chains-lab/city-petitions-svc/internal/app/models"
 	"github.com/chains-lab/city-petitions-svc/internal/constant/enum"
 	"github.com/chains-lab/city-petitions-svc/internal/dbx"
+	"github.com/chains-lab/city-petitions-svc/internal/errx"
 	"github.com/chains-lab/city-petitions-svc/internal/pagination"
 	"github.com/google/uuid"
 )
@@ -88,9 +91,8 @@ func (p Petition) CreatePetition(ctx context.Context, cityID, creatorID uuid.UUI
 
 	if err := p.q.New().Insert(ctx, petition); err != nil {
 		switch {
-		//TODO handle specific errors
 		default:
-			return models.Petition{}, err
+			return models.Petition{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -101,9 +103,10 @@ func (p Petition) GetPetition(ctx context.Context, petitionID uuid.UUID) (models
 	petition, err := p.q.New().FilterID(petitionID).Get(ctx)
 	if err != nil {
 		switch {
-		//TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return models.Petition{}, errx.RaisePetitionNotFoundByID(ctx, err, petitionID)
 		default:
-			return models.Petition{}, err
+			return models.Petition{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -114,40 +117,55 @@ func (p Petition) ApprovePetition(ctx context.Context, petitionID uuid.UUID, rep
 	petition, err := p.q.New().FilterID(petitionID).Get(ctx)
 	if err != nil {
 		switch {
-		//TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return models.Petition{}, errx.RaisePetitionNotFoundByID(ctx, err, petitionID)
 		default:
-			return models.Petition{}, err
+			return models.Petition{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
 	status := enum.PetitionApproved
 
 	updateInput := dbx.UpdatePetitionInput{
-		Status:  &status,
-		Reply:   &reply,
-		EndDate: &petition.EndDate,
+		Status: &status,
+		Reply:  &reply,
 	}
 
 	if err := p.q.New().FilterID(petitionID).Update(ctx, updateInput); err != nil {
 		switch {
-		// TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return models.Petition{}, errx.RaisePetitionNotFoundByID(ctx, err, petitionID)
 		default:
-			return models.Petition{}, err // Other errors
+			return models.Petition{}, errx.RaiseInternal(ctx, err) // Other errors
 		}
 	}
 
 	//TODO add kafka event for petition approval
 
-	return petitionModel(petition), nil
+	return models.Petition{
+		ID:          petition.ID,
+		CityID:      petition.CityID,
+		CreatorID:   petition.CreatorID,
+		Title:       petition.Title,
+		Description: petition.Description,
+		Status:      status,
+		Signatures:  petition.Signatures,
+		Goal:        petition.Goal,
+		Reply:       reply,
+		EndDate:     petition.EndDate,
+		CreatedAt:   petition.CreatedAt,
+		UpdatedAt:   petition.UpdatedAt,
+	}, nil
 }
 
 func (p Petition) RejectPetition(ctx context.Context, petitionID uuid.UUID, reply string) (models.Petition, error) {
 	petition, err := p.q.New().FilterID(petitionID).Get(ctx)
 	if err != nil {
 		switch {
-		//TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return models.Petition{}, errx.RaisePetitionNotFoundByID(ctx, err, petitionID)
 		default:
-			return models.Petition{}, err
+			return models.Petition{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -161,15 +179,29 @@ func (p Petition) RejectPetition(ctx context.Context, petitionID uuid.UUID, repl
 
 	if err := p.q.New().FilterID(petitionID).Update(ctx, updateInput); err != nil {
 		switch {
-		// TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return models.Petition{}, errx.RaisePetitionNotFoundByID(ctx, err, petitionID)
 		default:
-			return models.Petition{}, err // Other errors
+			return models.Petition{}, errx.RaiseInternal(ctx, err) // Other errors
 		}
 	}
 
 	//TODO add kafka event for petition rejection
 
-	return petitionModel(petition), nil
+	return models.Petition{
+		ID:          petition.ID,
+		CityID:      petition.CityID,
+		CreatorID:   petition.CreatorID,
+		Title:       petition.Title,
+		Description: petition.Description,
+		Status:      status,
+		Signatures:  petition.Signatures,
+		Goal:        petition.Goal,
+		Reply:       reply,
+		EndDate:     petition.EndDate,
+		CreatedAt:   petition.CreatedAt,
+		UpdatedAt:   petition.UpdatedAt,
+	}, nil
 }
 
 func (p Petition) SignPetition(ctx context.Context, initiatorID, petitionID uuid.UUID) (models.PetitionSignature, error) {
@@ -185,9 +217,21 @@ func (p Petition) SignPetition(ctx context.Context, initiatorID, petitionID uuid
 
 	if err := p.sigQ.New().Insert(ctx, signature); err != nil {
 		switch {
-		//TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			_, err = p.sigQ.New().FilterID(petitionID).FilterUserID(initiatorID).Get(ctx)
+			if err == nil {
+				return models.PetitionSignature{}, errx.RaisePetitionSignaturesAlreadyExists(ctx, err, petitionID, initiatorID)
+			}
+
+			_, err := p.q.New().FilterID(petitionID).Get(ctx)
+			if err != nil {
+				switch {
+				case errors.Is(err, sql.ErrNoRows):
+					return models.PetitionSignature{}, errx.RaisePetitionNotFoundByID(ctx, err, petitionID)
+				}
+			}
 		default:
-			return models.PetitionSignature{}, err
+			return models.PetitionSignature{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -198,8 +242,10 @@ func (p Petition) GetSignatureByID(ctx context.Context, userID, petitionID uuid.
 	res, err := p.sigQ.New().FilterID(petitionID).FilterUserID(userID).Get(ctx)
 	if err != nil {
 		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return models.PetitionSignature{}, errx.RaisePetitionSignaturesNotFoundByPetitionIDUserID(ctx, err, petitionID, userID)
 		default:
-			return models.PetitionSignature{}, err
+			return models.PetitionSignature{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -210,8 +256,10 @@ func (p Petition) GetSignatureByUserIDAndSigID(ctx context.Context, sigID uuid.U
 	res, err := p.sigQ.New().FilterID(sigID).Get(ctx)
 	if err != nil {
 		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return models.PetitionSignature{}, errx.RaisePetitionSignaturesNotFoundByID(ctx, err, sigID)
 		default:
-			return models.PetitionSignature{}, err
+			return models.PetitionSignature{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -298,18 +346,18 @@ func (p Petition) ListPetitions(
 	petitions, err := query.Page(limit, offset).Select(ctx)
 	if err != nil {
 		switch {
-		//TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return []models.Petition{}, pagination.Response{}, nil // No petitions found, return empty slice and pagination response
 		default:
-			return nil, pagination.Response{}, err
+			return nil, pagination.Response{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
 	total, err := query.Count(ctx)
 	if err != nil {
 		switch {
-		//TODO handle specific errors
 		default:
-			return nil, pagination.Response{}, err
+			return nil, pagination.Response{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -362,9 +410,10 @@ func (p Petition) ListSignatures(
 	signatures, err := query.Page(limit, offset).Select(ctx)
 	if err != nil {
 		switch {
-		//TODO handle specific errors
+		case errors.Is(err, sql.ErrNoRows):
+			return []models.PetitionSignature{}, pagination.Response{}, nil // No signatures found, return
 		default:
-			return nil, pagination.Response{}, err
+			return nil, pagination.Response{}, errx.RaiseInternal(ctx, err)
 		}
 	}
 
@@ -373,7 +422,7 @@ func (p Petition) ListSignatures(
 		modelsSignatures = append(modelsSignatures, petitionSignatureModel(sig))
 	}
 
-	return modelsSignatures, pagination.Response{}, err
+	return modelsSignatures, pagination.Response{}, errx.RaiseInternal(ctx, err)
 }
 
 func petitionModel(p dbx.Petition) models.Petition {
