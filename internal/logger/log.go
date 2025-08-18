@@ -3,12 +3,38 @@ package logger
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/chains-lab/city-petitions-svc/internal/api/grpc/meta"
+	"github.com/chains-lab/city-petitions-svc/internal/config"
 	"github.com/chains-lab/svc-errors/ape"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
+
+func NewLogger(cfg config.Config) *logrus.Logger {
+	log := logrus.New()
+
+	lvl, err := logrus.ParseLevel(strings.ToLower(cfg.Server.Log.Level))
+	if err != nil {
+		log.Warnf("invalid log level '%s', defaulting to 'info'", cfg.Server.Log.Level)
+		lvl = logrus.InfoLevel
+	}
+	log.SetLevel(lvl)
+
+	switch strings.ToLower(cfg.Server.Log.Format) {
+	case "json":
+		log.SetFormatter(&logrus.JSONFormatter{})
+	case "text":
+		fallthrough
+	default:
+		log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp: true,
+		})
+	}
+
+	return log
+}
 
 func UnaryLogInterceptor(log Logger) grpc.UnaryServerInterceptor {
 	return func(

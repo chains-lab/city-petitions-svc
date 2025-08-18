@@ -1,10 +1,9 @@
 server:
   name: "voting-svc"
   port: ":8002"
-
-logger:
-  level: "debug"
-  format: "text"
+  log:
+    level: "debug"
+    format: "text"
 
 database:
   sql:
